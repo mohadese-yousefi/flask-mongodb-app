@@ -1,5 +1,6 @@
 from flask import Blueprint, request, Response
 from flask.views import MethodView
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from marshmallow.exceptions import ValidationError
 from mongoengine.errors import NotUniqueError
 
@@ -17,13 +18,12 @@ class PostAPI(MethodView):
         post = Post.objects.get_or_404(id=post_id)
         resp = PostSchema().dumps(post)
         return custom_response(200, 'Success', data=resp)
-
+    
+    @jwt_required()
     def post(self):
         try:
-            #TODO: use session or token
-            #user_id = '64731ec35a8aea16197231ef'
-            #user = User.objects.get(id=user_id)
-            user = User.objects.first()
+            user_id = get_jwt_identity()
+            user = User.objects.get(id=user_id)
             data = request.get_json(force=True)
 
             data = PostSchema().load(data)
@@ -35,10 +35,13 @@ class PostAPI(MethodView):
         except NotUniqueError:
             return custom_response(400, 'title already exists')
     
+
+    @jwt_required()
     def put(self, post_id):
         try:
-            #TODO: check only owner could be edit the post
-            post = Post.objects.get_or_404(id=post_id)
+            user_id = get_jwt_identity()
+            user = User.objects.get(id=user_id)
+            post = Post.objects.get_or_404(id=post_id, owner=user)
 
             data = request.get_json(force=True)
             data = PostSchema().load(data, partial=True)
@@ -51,11 +54,13 @@ class PostAPI(MethodView):
             return custom_response(400, 'title already exists')
     
 
+    @jwt_required()
     def delete(self, post_id):
         try:
-            #TODO: check only owner could be delete the post
+            user_id = get_jwt_identity()
+            user = User.objects.get(id=user_id)
 
-            post = Post.objects.get_or_404(id=post_id)
+            post = Post.objects.get_or_404(id=post_id, owner=user)
             post.delete()
             return custom_response(200, 'Success') 
         except OperationError as e:

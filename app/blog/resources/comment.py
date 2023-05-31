@@ -1,5 +1,6 @@
 from flask import Blueprint, request, Response
 from flask.views import MethodView
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from marshmallow.exceptions import ValidationError
 from mongoengine.errors import NotUniqueError, DoesNotExist
 
@@ -23,13 +24,12 @@ class CommentAPI(MethodView):
         resp = CommentSchema().dumps(comment)
         return custom_response(200, 'Success', data=resp)
 
+    @jwt_required()
     def post(self, post_id):
         try:
-            #TODO: use session or token
-            #user_id = '64731ec35a8aea16197231ef'
-            #user = User.objects.get(id=user_id)
-            user = User.objects.first()
-            post = Post.objects.get_or_404(id=post_id)
+            user_id = get_jwt_identity()
+            user = User.objects.get(id=user_id)
+            post = Post.objects.get_or_404(id=post_id, owner=user)
             data = request.get_json(force=True)
 
             data = CommentSchema().load(data)
@@ -39,9 +39,11 @@ class CommentAPI(MethodView):
         except ValidationError as e:
             return custom_response(400, e.messages)
     
+    @jwt_required()
     def put(self, post_id, comment_id):
         try:
-            #TODO: check only owner could be edit the comment 
+            user_id = get_jwt_identity()
+            user = User.objects.get(id=user_id)
             post = Post.objects.get_or_404(id=post_id)
             for comment in post.content:
                 if str(comment.id) == comment:
@@ -60,11 +62,12 @@ class CommentAPI(MethodView):
             return custom_response(400, e.messages)
     
 
+    @jwt_required()
     def delete(self, post_id, comment_id):
         try:
-            #TODO: check only owner could be delete the post
-
-            post = Post.objects.get_or_404(id=post_id)
+            user_id = get_jwt_identity()
+            user = User.objects.get(id=user_id)
+            post = Post.objects.get_or_404(id=post_id, user=user)
             for comment in post.content:
                 if str(comment.id) == comment:
                     break
