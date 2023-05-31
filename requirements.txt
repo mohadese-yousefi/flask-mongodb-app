@@ -1,0 +1,5 @@
+Flask==2.2.3
+Flask-Bcrypt
+flask-marshmallow
+flask-mongoengine
+Flask-RESTful
